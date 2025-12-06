@@ -10,6 +10,7 @@ from src.party import Party
 from src.party_ui import PartyUI
 from src.inventory_ui import InventoryUI
 from src.combat_ui import CombatUI
+from src.enemy import EnemyEncounter, create_dummy
 
 class Game:
     """Main game controller"""
@@ -27,8 +28,13 @@ class Game:
         # Create player (start at grid position 1, 1, facing North)
         self.player = Player(1, 1, 0)
         
-        # Create simple raycaster
-        self.renderer = SimpleRaycaster(self.dungeon_map)
+        # Create enemy encounter system
+        self.enemy_encounters = EnemyEncounter()
+        # Place a training dummy directly north of player (player starts at 1,1 facing north)
+        self.enemy_encounters.add_enemy(1, 2, create_dummy())
+        
+        # Create simple raycaster with enemy encounters
+        self.renderer = SimpleRaycaster(self.dungeon_map, self.enemy_encounters)
         
         # Create party system
         self.party = Party()
@@ -36,9 +42,10 @@ class Game:
         self.inventory_ui = InventoryUI()
         self.combat_ui = CombatUI(self.party)
         
-        # Give combat UI access to game objects for minimap
+        # Give combat UI access to game objects
         self.combat_ui.dungeon_map = self.dungeon_map
         self.combat_ui.player = self.player
+        self.combat_ui.enemy_encounters = self.enemy_encounters
         
         # Game state
         self.paused = False

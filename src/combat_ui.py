@@ -3,6 +3,7 @@
 import pygame
 import math
 from src.constants import *
+from src.items import WEAPONS
 
 class CombatUI:
     """Combat interface showing character weapons and class abilities"""
@@ -12,6 +13,7 @@ class CombatUI:
         self.party = party
         self.dungeon_map = None
         self.player = None
+        self.enemy_encounters = None
         self.font = pygame.font.Font(None, 28)
         self.small_font = pygame.font.Font(None, 22)
         
@@ -41,6 +43,10 @@ class CombatUI:
             'Rogue': ['Stealthing', 'Thieving', 'Trapping'],
             'Cleric': ['Praying', 'Blessing', 'Holy Shield']
         }
+        
+        # Weapon swing animation
+        self.weapon_swinging = None  # (char_index, slot, start_time)
+        self.swing_duration = 0.3  # seconds
     
     def handle_click(self, pos):
         """Handle mouse click on combat UI"""
@@ -90,14 +96,43 @@ class CombatUI:
     
     def use_weapon(self, char_index, slot):
         """Use equipped weapon"""
-        char = self.party.members[char_index]
-        weapon = char.equipment.get(slot)
+        import time
         
-        if weapon:
-            print(f"{char.name} uses {weapon} from {slot}")
-            # TODO: Implement weapon action logic
-        else:
+        char = self.party.members[char_index]
+        weapon_name = char.equipment.get(slot)
+        
+        if not weapon_name:
             print(f"{char.name} has no weapon in {slot}")
+            return
+        
+        # Get weapon stats
+        weapon = WEAPONS.get(weapon_name)
+        if not weapon:
+            print(f"{char.name} swings {weapon_name} (no stats)")
+            return
+        
+        # Calculate damage
+        total_damage = weapon.get_total_damage(char)
+        
+        # Start swing animation
+        self.weapon_swinging = (char_index, slot, time.time())
+        
+        # Check if there's an enemy in front of player
+        if self.player and self.enemy_encounters:
+            enemy, ex, ey = self.enemy_encounters.get_enemy_in_front_of_player(self.player)
+            
+            if enemy:
+                # Hit the enemy!
+                enemy_died = enemy.take_damage(total_damage)
+                print(f"{char.name} hits {enemy.name} with {weapon_name} for {total_damage} damage! ({enemy.health}/{enemy.max_health} HP)")
+                
+                if enemy_died:
+                    print(f"{enemy.name} has been defeated!")
+                    self.enemy_encounters.remove_enemy(ex, ey)
+            else:
+                print(f"{char.name} swings {weapon_name} but hits nothing!")
+        else:
+            print(f"{char.name} swings {weapon_name} ({weapon.weapon_type}) for {total_damage} damage!")
     
     def use_ability(self, ability):
         """Use class ability"""
@@ -107,10 +142,19 @@ class CombatUI:
     
     def draw(self, screen):
         """Draw combat UI"""
+        import time
+        
         # Draw full right panel background
         panel_rect = pygame.Rect(self.panel_x, self.panel_y, self.panel_width, self.panel_height)
         pygame.draw.rect(screen, DARK_GRAY, panel_rect)
         pygame.draw.rect(screen, WHITE, panel_rect, 3)
+        
+        # Check weapon swing animation
+        if self.weapon_swinging:
+            char_index, slot, start_time = self.weapon_swinging
+            elapsed = time.time() - start_time
+            if elapsed > self.swing_duration:
+                self.weapon_swinging = None  # Animation complete
         
         # Draw minimap at top
         self.draw_minimap(screen)
@@ -145,7 +189,13 @@ class CombatUI:
             main_hand_rect = pygame.Rect(self.panel_x + 70, y_offset - 8, 
                                          self.weapon_slot_size, self.weapon_slot_size)
             main_hand = char.equipment.get('main_hand')
-            color = GREEN if main_hand else DARK_GRAY
+            
+            # Check if this weapon is swinging
+            is_swinging = (self.weapon_swinging and 
+                          self.weapon_swinging[0] == i and 
+                          self.weapon_swinging[1] == 'main_hand')
+            
+            color = YELLOW if is_swinging else (GREEN if main_hand else DARK_GRAY)
             pygame.draw.rect(screen, color, main_hand_rect)
             pygame.draw.rect(screen, WHITE, main_hand_rect, 2)
             
@@ -153,6 +203,13 @@ class CombatUI:
                 weapon_text = self.small_font.render(main_hand[:4], True, BLACK)
                 weapon_rect = weapon_text.get_rect(center=main_hand_rect.center)
                 screen.blit(weapon_text, weapon_rect)
+                
+                # Show damage stat if weapon is defined
+                weapon_obj = WEAPONS.get(main_hand)
+                if weapon_obj:
+                    dmg = weapon_obj.get_total_damage(char)
+                    dmg_text = self.small_font.render(f"{dmg}dmg", True, RED)
+                    screen.blit(dmg_text, (main_hand_rect.x, main_hand_rect.bottom + 2))
             else:
                 # Draw "M" for main hand
                 label = self.small_font.render("M", True, GRAY)
@@ -163,7 +220,13 @@ class CombatUI:
             off_hand_rect = pygame.Rect(self.panel_x + 140, y_offset - 8,
                                         self.weapon_slot_size, self.weapon_slot_size)
             off_hand = char.equipment.get('off_hand')
-            color = GREEN if off_hand else DARK_GRAY
+            
+            # Check if this weapon is swinging
+            is_swinging = (self.weapon_swinging and 
+                          self.weapon_swinging[0] == i and 
+                          self.weapon_swinging[1] == 'off_hand')
+            
+            color = YELLOW if is_swinging else (GREEN if off_hand else DARK_GRAY)
             pygame.draw.rect(screen, color, off_hand_rect)
             pygame.draw.rect(screen, WHITE, off_hand_rect, 2)
             

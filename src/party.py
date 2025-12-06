@@ -21,24 +21,30 @@ class Party:
         self.members[0].max_mana = 50
         self.members[0].mana = 50
         self.members[0].strength = 8  # Warriors are strong
+        self.members[0].equipment['main_hand'] = "Sword"
+        self.members[0].equipment['off_hand'] = "Shield"
         
         self.members[1].max_health = 70  # Mage - low health, high mana
         self.members[1].health = 70
         self.members[1].max_mana = 150
         self.members[1].mana = 150
         self.members[1].strength = 3  # Mages are weak
+        self.members[1].equipment['main_hand'] = "Staff"
         
         self.members[2].max_health = 90  # Rogue - medium health, high stamina
         self.members[2].health = 90
         self.members[2].max_stamina = 130
         self.members[2].stamina = 130
         self.members[2].strength = 5  # Rogues are average
+        self.members[2].equipment['main_hand'] = "Dagger"
+        self.members[2].equipment['off_hand'] = "Dagger"
         
         self.members[3].max_health = 100  # Cleric - balanced
         self.members[3].health = 100
         self.members[3].max_mana = 120
         self.members[3].mana = 120
         self.members[3].strength = 6  # Clerics are slightly strong
+        self.members[3].equipment['main_hand'] = "Mace"
         
         # Add some test inventory items
         self.members[0].inventory = ["Sword", "Shield", "Potion", "Bread"]
