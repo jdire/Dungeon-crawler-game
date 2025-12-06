@@ -9,9 +9,6 @@ venv/
 env/
 ENV/
 
-# Pygbag build
-build/
-
 # IDE
 .vscode/
 .idea/
