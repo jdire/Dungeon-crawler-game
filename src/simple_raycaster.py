@@ -47,6 +47,7 @@ class SimpleRaycaster:
             distance = 0
             hit_wall = False
             max_distance = 1000  # world pixels
+            hit_x, hit_y = 0, 0
             
             while not hit_wall and distance < max_distance:
                 distance += step_size
@@ -60,6 +61,8 @@ class SimpleRaycaster:
                 # Check if hit wall
                 if self.is_wall(grid_x, grid_y):
                     hit_wall = True
+                    hit_x = check_x
+                    hit_y = check_y
             
             if hit_wall:
                 # Calculate wall height based on perpendicular distance
@@ -71,14 +74,38 @@ class SimpleRaycaster:
                 wall_top = SCREEN_HEIGHT // 2 - wall_height // 2
                 wall_bottom = SCREEN_HEIGHT // 2 + wall_height // 2
                 
-                # Get wall color with distance shading
-                base_color = 120
-                shade = max(0.2, 1 - distance / max_distance)
-                color_value = int(base_color * shade)
-                color = (color_value, color_value, color_value)
+                # Calculate texture coordinate
+                # Determine if we hit a vertical or horizontal wall
+                wall_x = hit_x % TILE_SIZE
+                wall_y = hit_y % TILE_SIZE
                 
-                # Draw solid opaque wall stripe
-                pygame.draw.line(screen, color, (x, wall_top), (x, wall_bottom))
+                # Use the coordinate that's closer to an edge (more likely the hit surface)
+                if min(wall_x, TILE_SIZE - wall_x) < min(wall_y, TILE_SIZE - wall_y):
+                    # Hit vertical wall, use Y coordinate
+                    tex_x = int((wall_y / TILE_SIZE) * 64) % 64
+                else:
+                    # Hit horizontal wall, use X coordinate
+                    tex_x = int((wall_x / TILE_SIZE) * 64) % 64
+                
+                # Get the column from texture
+                if tex_x >= 64:
+                    tex_x = 63
+                
+                # Scale texture column to wall height
+                tex_column = pygame.Surface((1, 64))
+                tex_column.blit(self.wall_tex, (0, 0), (tex_x, 0, 1, 64))
+                tex_column = pygame.transform.scale(tex_column, (1, wall_height))
+                
+                # Apply distance shading
+                shade = max(0.3, 1 - distance / max_distance)
+                if shade < 1.0:
+                    dark = pygame.Surface((1, wall_height))
+                    dark.fill((0, 0, 0))
+                    dark.set_alpha(int(255 * (1.0 - shade)))
+                    tex_column.blit(dark, (0, 0))
+                
+                # Draw the textured stripe
+                screen.blit(tex_column, (x, wall_top))
     
     def is_wall(self, gx, gy):
         """Check if grid position is a wall"""
