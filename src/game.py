@@ -5,7 +5,7 @@ import asyncio
 from src.constants import *
 from src.player import Player
 from src.dungeon_map import DungeonMap
-from src.raycaster import Raycaster
+from src.simple_raycaster import SimpleRaycaster
 from src.party import Party
 from src.party_ui import PartyUI
 from src.inventory_ui import InventoryUI
@@ -24,11 +24,11 @@ class Game:
         # Create dungeon
         self.dungeon_map = DungeonMap()
         
-        # Create player (start at position 1.5, 1.5 in grid coordinates)
-        self.player = Player(1.5 * TILE_SIZE, 1.5 * TILE_SIZE, 0)
+        # Create player (start at grid position 1, 1, facing North)
+        self.player = Player(1, 1, 0)
         
-        # Create raycaster
-        self.raycaster = Raycaster(self.dungeon_map)
+        # Create simple raycaster
+        self.renderer = SimpleRaycaster(self.dungeon_map)
         
         # Create party system
         self.party = Party()
@@ -44,7 +44,7 @@ class Game:
         self.paused = False
         
         # Font for info
-        self.font = pygame.font.Font(None, 24)
+        self.font = pygame.font.Font(None, 32)
         
     async def run(self):
         """Main game loop"""
@@ -76,6 +76,20 @@ class Game:
                     else:
                         self.inventory_ui.open(self.party.members[0])
                         self.paused = True
+                # Tile-based movement
+                elif not self.paused:
+                    if event.key == pygame.K_w or event.key == pygame.K_UP:
+                        self.player.try_move_forward(self.dungeon_map)
+                    elif event.key == pygame.K_s or event.key == pygame.K_DOWN:
+                        self.player.try_move_backward(self.dungeon_map)
+                    elif event.key == pygame.K_a or event.key == pygame.K_LEFT:
+                        self.player.turn_left()
+                    elif event.key == pygame.K_d or event.key == pygame.K_RIGHT:
+                        self.player.turn_right()
+                    elif event.key == pygame.K_q:
+                        self.player.try_strafe_left(self.dungeon_map)
+                    elif event.key == pygame.K_e:
+                        self.player.try_strafe_right(self.dungeon_map)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # Check combat UI first (right side)
                 if self.combat_ui.handle_click(event.pos):
@@ -103,34 +117,10 @@ class Game:
         """Update game state"""
         if self.paused:
             return
-        
-        keys = pygame.key.get_pressed()
-        
-        forward = 0
-        strafe = 0
-        
-        if keys[pygame.K_w] or keys[pygame.K_UP]:
-            forward = 1
-        if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-            forward = -1
-        if keys[pygame.K_a]:
-            strafe = -1
-        if keys[pygame.K_d]:
-            strafe = 1
-        
-        if keys[pygame.K_q] or keys[pygame.K_LEFT]:
-            self.player.rotate(-ROTATION_SPEED)
-        if keys[pygame.K_e] or keys[pygame.K_RIGHT]:
-            self.player.rotate(ROTATION_SPEED)
-        
-        if forward != 0 or strafe != 0:
-            self.player.move(self.dungeon_map, forward, strafe)
-        
-        self.raycaster.cast_rays(self.player)
     
     def draw(self):
         """Draw everything"""
-        self.raycaster.render(self.screen)
+        self.renderer.render(self.screen, self.player)
         
         self.party_ui.draw(self.screen)
         

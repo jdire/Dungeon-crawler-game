@@ -6,14 +6,14 @@ import math
 DEV_MODE = True  # Set to False for production builds
 
 # Screen settings
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 900
 FPS = 60
 
 # Raycasting settings
 FOV = math.pi / 3  # 60 degrees field of view
 HALF_FOV = FOV / 2
-NUM_RAYS = 120  # Number of rays to cast
+NUM_RAYS = 1600  # Fixed number of rays for consistent performance
 MAX_DEPTH = 20  # Maximum ray distance
 DELTA_ANGLE = FOV / NUM_RAYS
 

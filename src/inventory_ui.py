@@ -10,12 +10,12 @@ class InventoryUI:
         """Initialize inventory UI"""
         self.active = False
         self.selected_character = None
-        self.font = pygame.font.Font(None, 24)
-        self.small_font = pygame.font.Font(None, 18)
+        self.font = pygame.font.Font(None, 32)
+        self.small_font = pygame.font.Font(None, 24)
         
-        # UI layout - leave space for combat UI on right (250px)
-        combat_ui_width = 250
-        self.panel_rect = pygame.Rect(50, 50, SCREEN_WIDTH - combat_ui_width - 100, SCREEN_HEIGHT - 100)
+        # UI layout - leave space for combat UI on right (380px)
+        combat_ui_width = 380
+        self.panel_rect = pygame.Rect(75, 75, SCREEN_WIDTH - combat_ui_width - 150, SCREEN_HEIGHT - 150)
         
         # Split panel into two sections: equipment (left) and inventory (right)
         self.equipment_panel_width = 350

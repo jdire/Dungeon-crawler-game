@@ -12,11 +12,11 @@ class CombatUI:
         self.party = party
         self.dungeon_map = None
         self.player = None
-        self.font = pygame.font.Font(None, 20)
-        self.small_font = pygame.font.Font(None, 16)
+        self.font = pygame.font.Font(None, 28)
+        self.small_font = pygame.font.Font(None, 22)
         
         # UI layout - full right side panel
-        self.panel_width = 250
+        self.panel_width = 380
         self.panel_x = SCREEN_WIDTH - self.panel_width
         self.panel_y = 0
         self.panel_height = SCREEN_HEIGHT
@@ -25,14 +25,14 @@ class CombatUI:
         self.selected_character_index = 0
         
         # Character orb size
-        self.orb_size = 15
-        self.weapon_slot_size = 40
+        self.orb_size = 20
+        self.weapon_slot_size = 55
         
         # Layout positions
-        self.minimap_y = 5
-        self.minimap_height = 140
-        self.characters_start_y = self.minimap_y + self.minimap_height + 15
-        self.separator_y = self.characters_start_y + (55 * 4) + 10
+        self.minimap_y = 8
+        self.minimap_height = 200
+        self.characters_start_y = self.minimap_y + self.minimap_height + 20
+        self.separator_y = self.characters_start_y + (75 * 4) + 15
         
         # Class-specific abilities
         self.class_abilities = {
@@ -50,8 +50,8 @@ class CombatUI:
         
         # Check character orb selections
         for i, char in enumerate(self.party.members):
-            orb_y = self.characters_start_y + i * 55
-            orb_rect = pygame.Rect(self.panel_x + 10, orb_y, self.orb_size, self.orb_size)
+            orb_y = self.characters_start_y + i * 75
+            orb_rect = pygame.Rect(self.panel_x + 15, orb_y, self.orb_size, self.orb_size)
             
             if orb_rect.collidepoint(pos):
                 self.selected_character_index = i
@@ -59,13 +59,13 @@ class CombatUI:
                 return True
             
             # Check main hand weapon click
-            main_hand_rect = pygame.Rect(self.panel_x + 50, orb_y - 5, self.weapon_slot_size, self.weapon_slot_size)
+            main_hand_rect = pygame.Rect(self.panel_x + 70, orb_y - 8, self.weapon_slot_size, self.weapon_slot_size)
             if main_hand_rect.collidepoint(pos):
                 self.use_weapon(i, 'main_hand')
                 return True
             
             # Check off hand weapon click
-            off_hand_rect = pygame.Rect(self.panel_x + 100, orb_y - 5, self.weapon_slot_size, self.weapon_slot_size)
+            off_hand_rect = pygame.Rect(self.panel_x + 140, orb_y - 8, self.weapon_slot_size, self.weapon_slot_size)
             if off_hand_rect.collidepoint(pos):
                 self.use_weapon(i, 'off_hand')
                 return True
@@ -74,13 +74,13 @@ class CombatUI:
         selected_char = self.party.members[self.selected_character_index]
         abilities = self.class_abilities.get(selected_char.char_class, [])
         
-        abilities_start_y = self.separator_y + 40
+        abilities_start_y = self.separator_y + 50
         for i, ability in enumerate(abilities):
             ability_rect = pygame.Rect(
-                self.panel_x + 10,
-                abilities_start_y + i * 35,
-                self.panel_width - 20,
-                30
+                self.panel_x + 15,
+                abilities_start_y + i * 45,
+                self.panel_width - 30,
+                40
             )
             if ability_rect.collidepoint(pos):
                 self.use_ability(ability)
@@ -117,32 +117,32 @@ class CombatUI:
         
         # Draw character weapons section
         for i, char in enumerate(self.party.members):
-            y_offset = self.characters_start_y + i * 55
+            y_offset = self.characters_start_y + i * 75
             
             # Draw character orb with selection indicator
-            orb_center = (self.panel_x + 10 + self.orb_size // 2, y_offset + self.orb_size // 2)
+            orb_center = (self.panel_x + 15 + self.orb_size // 2, y_offset + self.orb_size // 2)
             
             # Selection checkbox
-            checkbox_rect = pygame.Rect(self.panel_x + 10, y_offset, self.orb_size, self.orb_size)
+            checkbox_rect = pygame.Rect(self.panel_x + 15, y_offset, self.orb_size, self.orb_size)
             pygame.draw.rect(screen, WHITE, checkbox_rect, 2)
             
             # Draw checkmark if selected
             if i == self.selected_character_index:
                 pygame.draw.line(screen, GREEN, 
-                               (checkbox_rect.left + 3, checkbox_rect.centery),
-                               (checkbox_rect.centerx, checkbox_rect.bottom - 3), 3)
+                               (checkbox_rect.left + 4, checkbox_rect.centery),
+                               (checkbox_rect.centerx, checkbox_rect.bottom - 4), 3)
                 pygame.draw.line(screen, GREEN,
-                               (checkbox_rect.centerx, checkbox_rect.bottom - 3),
-                               (checkbox_rect.right - 3, checkbox_rect.top + 3), 3)
+                               (checkbox_rect.centerx, checkbox_rect.bottom - 4),
+                               (checkbox_rect.right - 4, checkbox_rect.top + 4), 3)
             
             # Draw character indicator orb next to checkbox
             pygame.draw.circle(screen, char.portrait_color, 
-                             (self.panel_x + 35, y_offset + 7), 8)
+                             (self.panel_x + 50, y_offset + 10), 11)
             pygame.draw.circle(screen, WHITE, 
-                             (self.panel_x + 35, y_offset + 7), 8, 1)
+                             (self.panel_x + 50, y_offset + 10), 11, 2)
             
             # Draw main hand weapon slot
-            main_hand_rect = pygame.Rect(self.panel_x + 50, y_offset - 5, 
+            main_hand_rect = pygame.Rect(self.panel_x + 70, y_offset - 8, 
                                          self.weapon_slot_size, self.weapon_slot_size)
             main_hand = char.equipment.get('main_hand')
             color = GREEN if main_hand else DARK_GRAY
@@ -160,7 +160,7 @@ class CombatUI:
                 screen.blit(label, label_rect)
             
             # Draw off hand weapon slot
-            off_hand_rect = pygame.Rect(self.panel_x + 100, y_offset - 5,
+            off_hand_rect = pygame.Rect(self.panel_x + 140, y_offset - 8,
                                         self.weapon_slot_size, self.weapon_slot_size)
             off_hand = char.equipment.get('off_hand')
             color = GREEN if off_hand else DARK_GRAY
@@ -179,12 +179,12 @@ class CombatUI:
             
             # Draw character name
             name_text = self.small_font.render(char.name, True, char.portrait_color)
-            screen.blit(name_text, (self.panel_x + 150, y_offset + 10))
+            screen.blit(name_text, (self.panel_x + 210, y_offset + 15))
         
         # Draw separator line
         pygame.draw.line(screen, WHITE, 
                         (self.panel_x, self.separator_y),
-                        (self.panel_x + self.panel_width, self.separator_y), 2)
+                        (self.panel_x + self.panel_width, self.separator_y), 3)
         
         # Draw selected character's abilities
         selected_char = self.party.members[self.selected_character_index]
@@ -192,20 +192,20 @@ class CombatUI:
         
         # Draw class title
         title_text = self.font.render(f"{selected_char.char_class} Actions", True, WHITE)
-        screen.blit(title_text, (self.panel_x + 10, self.separator_y + 10))
+        screen.blit(title_text, (self.panel_x + 15, self.separator_y + 15))
         
         # Draw ability buttons
-        abilities_start_y = self.separator_y + 40
+        abilities_start_y = self.separator_y + 50
         for i, ability in enumerate(abilities):
             ability_rect = pygame.Rect(
-                self.panel_x + 10,
-                abilities_start_y + i * 35,
-                self.panel_width - 20,
-                30
+                self.panel_x + 15,
+                abilities_start_y + i * 45,
+                self.panel_width - 30,
+                40
             )
             
             pygame.draw.rect(screen, BLUE, ability_rect)
-            pygame.draw.rect(screen, WHITE, ability_rect, 2)
+            pygame.draw.rect(screen, WHITE, ability_rect, 3)
             
             ability_text = self.small_font.render(ability, True, WHITE)
             text_rect = ability_text.get_rect(center=ability_rect.center)
@@ -259,6 +259,7 @@ class CombatUI:
         player_y = offset_y + self.player.y * minimap_scale
         pygame.draw.circle(minimap_surf, RED, (int(player_x), int(player_y)), 3)
         
+        # Draw direction arrow (pygame Y+ is down, so sin is positive for down angles)
         dir_len = 10
         end_x = player_x + math.cos(self.player.angle) * dir_len
         end_y = player_y + math.sin(self.player.angle) * dir_len

@@ -1,0 +1,276 @@
+"""3D wall panel renderer - renders walls as flat 3D planes"""
+
+import math
+import pygame
+from src.constants import *
+
+class WallRenderer:
+    """Render walls as 3D panels facing inward"""
+    
+    def __init__(self, dungeon_map):
+        """Initialize wall renderer"""
+        self.dungeon_map = dungeon_map
+        self.load_wall_texture()
+        
+    def load_wall_texture(self):
+        """Load wall texture from file or generate one"""
+        import os
+        
+        # Try to load from textures folder
+        texture_paths = [
+            'textures/wall.png',
+            'textures/wall.jpg',
+            'textures/wall.jpeg',
+            'textures/wall.bmp'
+        ]
+        
+        for path in texture_paths:
+            if os.path.exists(path):
+                try:
+                    texture = pygame.image.load(path)
+                    if texture.get_width() != 64 or texture.get_height() != 64:
+                        texture = pygame.transform.scale(texture, (64, 64))
+                    print(f"Loaded wall texture from {path}")
+                    self.wall_texture = texture
+                    return
+                except Exception as e:
+                    print(f"Failed to load texture from {path}: {e}")
+        
+        # Fallback to generated texture
+        print("No wall texture found, using procedurally generated texture")
+        self.wall_texture = self.create_wall_texture()
+    
+    def create_wall_texture(self):
+        """Create a simple stone texture"""
+        import random
+        texture = pygame.Surface((64, 64))
+        random.seed(12345)
+        
+        for x in range(64):
+            for y in range(64):
+                base = 120
+                variation = random.randint(-20, 20)
+                shade = base + variation
+                
+                # Add mortar lines
+                if y % 16 == 0 or y % 16 == 1:
+                    shade = int(shade * 0.6)
+                if x % 8 == 0:
+                    shade = int(shade * 0.6)
+                    
+                shade = max(60, min(180, shade))
+                texture.set_at((x, y), (shade, shade, shade))
+        
+        return texture
+    
+    def project_3d_to_2d(self, x, y, z, player):
+        """Project 3D world coordinate to 2D screen coordinate
+        Coordinate system: X+ right, Y+ down, angle: North=-90°, East=0°, South=90°, West=180°
+        Camera: looks in direction of player.angle
+        """
+        # Translate to player space
+        dx = x - player.x
+        dy = y - player.y
+        
+        # For camera space, we want:
+        # - cam_x = perpendicular to view direction (left/right)
+        # - cam_y = parallel to view direction (depth, positive = forward)
+        # 
+        # Player angle defines forward direction:
+        # North(-90°): forward = (0, -1) in world
+        # East(0°): forward = (1, 0) in world
+        # South(90°): forward = (0, 1) in world
+        # West(180°): forward = (-1, 0) in world
+        
+        # Forward vector from player angle
+        forward_x = math.cos(player.angle)
+        forward_y = math.sin(player.angle)
+        
+        # Right vector (perpendicular to forward, rotated 90° clockwise)
+        right_x = -forward_y
+        right_y = forward_x
+        
+        # Project world offset onto camera axes
+        cam_x = dx * right_x + dy * right_y  # Left/right
+        cam_y = dx * forward_x + dy * forward_y  # Forward/back (depth)
+        cam_z = z - TILE_SIZE / 2  # Center Z at player eye height
+        
+        # Clip if behind or too close
+        if cam_y < 5:  # Behind camera or too close
+            return None
+        
+        # Perspective projection
+        focal_length = SCREEN_WIDTH * 0.8
+        screen_x = int(SCREEN_WIDTH / 2 + (cam_x * focal_length) / cam_y)
+        screen_y = int(SCREEN_HEIGHT * 0.55 - (cam_z * focal_length) / cam_y)
+        screen_scale = focal_length / cam_y
+        
+        return (screen_x, screen_y, screen_scale)
+    
+    def render(self, screen, player):
+        """Render all wall panels"""
+        # Draw ceiling
+        screen.fill((50, 50, 50), (0, 0, SCREEN_WIDTH, int(SCREEN_HEIGHT * 0.55)))
+        # Draw floor
+        screen.fill((80, 80, 80), (0, int(SCREEN_HEIGHT * 0.55), SCREEN_WIDTH, SCREEN_HEIGHT))
+        
+        # Collect all wall panels
+        wall_panels = []
+        wall_height = TILE_SIZE
+        
+        debug_once = not hasattr(self, '_debug_done')
+        if debug_once:
+            self._debug_done = True
+            print(f"\n=== DETAILED Wall Panel Debug ===")
+            print(f"Player: grid=({player.grid_x},{player.grid_y}), world=({player.x:.1f},{player.y:.1f})")
+            print(f"Player: facing={player.facing}, angle={player.angle:.3f} rad ({math.degrees(player.angle):.1f}°)")
+            print(f"Map layout (1=wall, 0=empty):")
+            for gy in range(self.dungeon_map.height):
+                row = ""
+                for gx in range(self.dungeon_map.width):
+                    if gx == player.grid_x and gy == player.grid_y:
+                        row += "P "
+                    else:
+                        row += str(self.dungeon_map.grid[gy][gx]) + " "
+                print(f"  {row}")
+        
+        # Scan the entire map
+                # North side: check cell above
+                if gy > 0 and not self.dungeon_map.is_wall_grid(gx, gy - 1):
+                    # Create north-facing panel (facing into the empty space)
+                    x1 = gx * TILE_SIZE
+                    x2 = (gx + 1) * TILE_SIZE
+                    y = gy * TILE_SIZE
+                    wall_panels.append({
+                        'corners': [(x1, y, 0), (x2, y, 0), (x2, y, wall_height), (x1, y, wall_height)],
+                        'center': ((x1+x2)/2, y, wall_height/2),
+                        'face': 'N',
+                        'grid': (gx, gy)
+                    }) = gx * TILE_SIZE
+                    x2 = (gx + 1) * TILE_SIZE
+                    y = gy * TILE_SIZE
+                # South side: check cell below
+                if gy < self.dungeon_map.height - 1 and not self.dungeon_map.is_wall_grid(gx, gy + 1):
+                    x1 = gx * TILE_SIZE
+                    x2 = (gx + 1) * TILE_SIZE
+                    y = (gy + 1) * TILE_SIZE
+                    wall_panels.append({
+                        'corners': [(x1, y, 0), (x2, y, 0), (x2, y, wall_height), (x1, y, wall_height)],
+                        'center': ((x1+x2)/2, y, wall_height/2),
+                        'face': 'S',
+                        'grid': (gx, gy)
+                    })
+                
+                # West side: check cell to the left
+                if gx > 0 and not self.dungeon_map.is_wall_grid(gx - 1, gy):
+                    x = gx * TILE_SIZE
+                    y1 = gy * TILE_SIZE
+                    y2 = (gy + 1) * TILE_SIZE
+                    wall_panels.append({
+                        'corners': [(x, y1, 0), (x, y2, 0), (x, y2, wall_height), (x, y1, wall_height)],
+                        'center': (x, (y1+y2)/2, wall_height/2),
+                        'face': 'W',
+                        'grid': (gx, gy)
+                    })
+                
+                # East side: check cell to the right
+                if gx < self.dungeon_map.width - 1 and not self.dungeon_map.is_wall_grid(gx + 1, gy):
+                    x = (gx + 1) * TILE_SIZE
+                    y1 = gy * TILE_SIZE
+                    y2 = (gy + 1) * TILE_SIZE
+                    wall_panels.append({
+                        'corners': [(x, y1, 0), (x, y2, 0), (x, y2, wall_height), (x, y1, wall_height)],
+                        'center': (x, (y1+y2)/2, wall_height/2),
+                        'face': 'E',
+                        'grid': (gx, gy)
+                    })< self.dungeon_map.width - 1 and not self.dungeon_map.is_wall_grid(gx + 1, gy):
+                    x = (gx + 1) * TILE_SIZE
+                    y1 = gy * TILE_SIZE
+                    y2 = (gy + 1) * TILE_SIZE
+                    wall_panels.append({
+                        'corners': [(x, y1, 0), (x, y2, 0), (x, y2, wall_height), (x, y1, wall_height)],
+                        'center': (x, (y1+y2)/2, wall_height/2),
+                        'face': 'E'
+        
+        if debug_once:
+            print(f"\nTotal wall panels generated: {len(wall_panels)}")
+        
+        # Sort by distance (back to front)
+        for panel in wall_panels:
+            cx, cy, cz = panel['center']
+            dx = cx - player.x
+            dy = cy - player.y
+            panel['distance'] = math.sqrt(dx*dx + dy*dy)
+        
+        wall_panels.sort(key=lambda p: p['distance'], reverse=True)
+        
+        if debug_once:
+            print(f"\nClosest 10 panels to player (after sorting):")
+            for i, panel in enumerate(wall_panels[:10]):
+                cx, cy, _ = panel['center']
+                gx, gy = panel['grid']
+                
+                # Calculate camera space coordinates
+                dx = cx - player.x
+                dy = cy - player.y
+                forward_x = math.cos(player.angle)
+                forward_y = math.sin(player.angle)
+                cam_depth = dx * forward_x + dy * forward_y
+                
+                print(f"  {i}: grid({gx},{gy}) face={panel['face']} center=({cx:.0f},{cy:.0f}) " +
+                      f"dist={panel['distance']:.1f} cam_depth={cam_depth:.1f}")
+        
+        # Render each panely=lambda p: p['distance'], reverse=True)
+        
+        # Render each panel
+        for panel in wall_panels:
+            self.render_panel(screen, panel, player)
+    
+    def render_panel(self, screen, panel, player):
+        """Render a single wall panel"""
+        # Project all corners
+        projected = []
+        all_valid = True
+        
+        for corner in panel['corners']:
+            proj = self.project_3d_to_2d(corner[0], corner[1], corner[2], player)
+            if proj is None:
+                all_valid = False
+                break
+            projected.append(proj)
+        
+        if not all_valid or len(projected) != 4:
+            return
+        
+        # Draw filled polygon with texture color
+        points = [(p[0], p[1]) for p in projected]
+        
+        try:
+            # Fill the polygon
+            pygame.draw.polygon(screen, (120, 120, 120), points, 0)
+            
+            # Calculate bounding box
+            min_x = max(0, int(min(p[0] for p in points)))
+            max_x = min(SCREEN_WIDTH, int(max(p[0] for p in points)))
+            min_y = max(0, int(min(p[1] for p in points)))
+            max_y = min(SCREEN_HEIGHT, int(max(p[1] for p in points)))
+            
+            # Calculate average scale for texture
+            avg_scale = sum(p[2] for p in projected) / 4
+            tex_size = max(8, int(64 * avg_scale))
+            
+            if tex_size > 0 and max_x > min_x and max_y > min_y:
+                # Scale texture
+                scaled_texture = pygame.transform.scale(self.wall_texture, (tex_size, tex_size))
+                
+                # Tile texture over panel area
+                for y in range(min_y, max_y, tex_size):
+                    for x in range(min_x, max_x, tex_size):
+                        screen.blit(scaled_texture, (x, y))
+            
+            # Draw darker outline
+            pygame.draw.polygon(screen, (60, 60, 60), points, 2)
+            
+        except Exception as e:
+            # Skip panels that cause issues
+            pass
